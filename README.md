@@ -15,12 +15,11 @@ Then the dog is red
 Can be done through :
 
 ```java
-String rawScenario = ...
+InputStream rawScenario = ...
 
-LineParser parser = new LineParser(Sets.newHashSet("Given", "When", "Then", "And"));
-Lines lines = parser.parse(rawScenario);
-Scenario scenario = new ScenarioBuilder().build(lines);
+IceLanguageParser parser = new IceLanguageParser(Sets.newHashSet("Given", "When", "Then", "And"));
+ParsingResult parsingResult = parser.parse(rawScenario);
+Scenario scenario = parsingResult.getScenario();
 ```
 
-Each [`Step`](src/main/java/com/github/ledoyen/Step.java) of the [`Scenario`](src/main/java/com/github/ledoyen/Step.java) refers to a parsed [`Line`](src/main/java/com/github/ledoyen/Lines.java) so that errors can be attached to the initial document (lineNumber, rawText).
-  
+Each `Scenario` and `Step` objects have a `Location` attribute containing the line and column of their position in the original **scenario** document.
