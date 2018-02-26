@@ -16,7 +16,7 @@ public class IceLanguageParserTest {
 
         ParsingResult parsingResult = parser.parse(streamResource("one_level.ice"));
 
-        assertThat(parsingResult).as("parsing result").isNotNull();
+        assertThat(parsingResult).as("parsing result\n\t" + parsingResult.getErrors()).isNotNull();
         assertThat(parsingResult.isSuccess()).as("parsing status").isTrue();
         assertThat(parsingResult.getErrors()).as("parsing errors").isEmpty();
 

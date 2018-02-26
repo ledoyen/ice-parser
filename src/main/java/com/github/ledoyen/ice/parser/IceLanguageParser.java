@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.misc.Interval;
 
 public class IceLanguageParser {
 
@@ -34,7 +35,8 @@ public class IceLanguageParser {
             }
         };
 
-        IceLexer lexer = new IceLexer(stream(scenario));
+        CharStream charStream = stream(scenario);
+        IceLexer lexer = new IceLexer(charStream);
         lexer.getLexerLookup().put(IceLexer.STEP_KEYWORD, keywords);
         lexer.removeErrorListeners();
         lexer.addErrorListener(errorListener);
@@ -49,7 +51,7 @@ public class IceLanguageParser {
         
         final ParsingResult parsingResult;
         if (errors.isEmpty()) {
-            parsingResult = new ParsingResult(buildScenario(result));
+            parsingResult = new ParsingResult(buildScenario(result, charStream));
         } else {
             parsingResult = new ParsingResult(errors);
         }
@@ -57,28 +59,43 @@ public class IceLanguageParser {
         return parsingResult;
     }
 
-    private Scenario buildScenario(IceParser.DocumentContext result) {
+    private Scenario buildScenario(IceParser.DocumentContext result, CharStream charStream) {
         ImmutableScenario.Builder scenarioBuilder = ImmutableScenario.builder();
 
         scenarioBuilder.location(buildLocation(result));
-        result.step().stream().map(this::buildStep).forEach(scenarioBuilder::addSteps);
+        result.step().stream().map(stepContext -> buildStep(stepContext, charStream)).forEach(scenarioBuilder::addSteps);
 
         return scenarioBuilder.build();
     }
 
-    private Scenario.Step buildStep(IceParser.StepContext stepContext) {
+    private Scenario.Step buildStep(IceParser.StepContext stepContext, CharStream charStream) {
         ImmutableScenario.Step.Builder stepBuilder = ImmutableScenario.Step.builder();
 
         stepBuilder.location(buildLocation(stepContext));
-        stepBuilder.keyword(stepContext.STEP_KEYWORD().getText());
-        stepBuilder.text(stepContext.line_to_eol().getText().trim());
+        stepBuilder.keyword(stepContext.step_line().STEP_KEYWORD().getText());
+        stepBuilder.text(stepContext.step_line().line_to_eol().getText().trim());
         stepContext.LINE_COMMENT().forEach(
-                line_comment -> stepBuilder.addComments(line_comment.getText())
+                line_comment -> stepBuilder.addComments(stripCommentChar(line_comment.getText()))
         );
+        if(stepContext.step_args() != null && stepContext.step_args().doc_string() != null) {
+            Interval blocInterval = stepContext.step_args().doc_string().getSourceInterval();
+            Interval realInterval = new Interval(blocInterval.a + 12, blocInterval.b + 18);
+            String blocText = charStream.getText(realInterval);
+            stepBuilder.valueBloc(stripBlocSeperatorAndCorrectIndentation(blocText));
+        }
 
-        stepContext.step().stream().map(this::buildStep).forEach(stepBuilder::addSteps);
+        stepContext.step_args().step().stream().map(subStepContext -> buildStep(subStepContext, charStream)).forEach(stepBuilder::addSteps);
 
         return stepBuilder.build();
+    }
+
+    private String stripBlocSeperatorAndCorrectIndentation(String text) {
+        String strippedBlocValue = text.substring(4, text.length() - 4);
+        return strippedBlocValue;
+    }
+
+    private String stripCommentChar(String text) {
+        return text.substring(1).trim();
     }
 
     private Location buildLocation(ParserRuleContext context) {

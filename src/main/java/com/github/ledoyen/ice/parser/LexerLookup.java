@@ -22,7 +22,7 @@ class LexerLookup {
     }
 
     public boolean contains(final int tokenId, final CharStream input) {
-
+        String symbolicName = IceLexer.VOCABULARY.getSymbolicName(tokenId);
         boolean contains = false;
 
         if (!tokenIdTermsMap.containsKey(tokenId)) {
